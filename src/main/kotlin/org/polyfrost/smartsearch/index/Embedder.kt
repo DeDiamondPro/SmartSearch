@@ -10,6 +10,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object Embedder {
     const val BATCH_SIZE = 50
+
+    /** Skip embedding sound tweak options, adds barely any quality and adds like 3k embeddings */
+    private val SKIPPED_IDS: Set<String> = setOf("soundtweaks.json::")
+
     private val toEmbed: MutableMap<String, SearchDocument<*>> = LinkedHashMap()
 
     /** Every document currently being embedded in this batch */
@@ -23,6 +27,8 @@ object Embedder {
     fun queueEmbedding(toEmbed: List<SearchDocument<*>>) {
         synchronized(queueLock) {
             for (doc in toEmbed) {
+                if (SKIPPED_IDS.any { doc.id.startsWith(it) }) continue
+
                 // Skip if embedding would have the same result
                 if (inFlight[doc.id] == doc.hash()) continue
                 this.toEmbed[doc.id] = doc

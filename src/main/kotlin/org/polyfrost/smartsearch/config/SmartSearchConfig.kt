@@ -12,6 +12,7 @@ import org.polyfrost.smartsearch.index.DataStore
 import org.polyfrost.smartsearch.search.SearchParams
 import org.polyfrost.smartsearch.ui.IndexerStatusVisualizer
 import org.polyfrost.smartsearch.util.DocumentExporter
+import java.io.File
 
 object SmartSearchConfig : Config(
     "smartsearch.json",
@@ -80,6 +81,15 @@ object SmartSearchConfig : Config(
     )
     fun exportSearchDocuments() {
         DocumentExporter.export()
+    }
+
+    @Button(
+        title = "Create Embedding Cache",
+        description = "Export all currently loaded embeddings to a cache file that can be used by others.",
+        category = "Advanced",
+    )
+    fun createEmbeddingCache() {
+        DataStore.createEmbeddingCache().write(File("embedding-cache"))
     }
 
     @Number(

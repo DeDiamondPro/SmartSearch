@@ -27,6 +27,8 @@ import org.apache.lucene.util.FixedBitSet
 import org.polyfrost.oneconfig.internal.ui.search.SearchDocument
 import org.polyfrost.oneconfig.internal.ui.search.SearchScope
 import org.polyfrost.smartsearch.SmartSearchClient
+import org.polyfrost.smartsearch.cache.CacheStore
+import org.polyfrost.smartsearch.cache.EmbeddingCache
 import java.security.MessageDigest
 import java.nio.file.Path
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -110,11 +112,16 @@ open class SearchIndex(path: Path) {
                         val toEmbed: MutableList<SearchDocument<*>> = mutableListOf()
                         for (doc in added) {
                             val entryStatus = checkStatus(existing, doc)
-                            if (entryStatus != EntryStatus.EXISTS) {
-                                toEmbed.add(doc)
-                            }
-                            if (entryStatus == EntryStatus.NOT_EXISTS || entryStatus == EntryStatus.STALE) {
-                                val newDoc = buildDocument(doc)
+                            if (entryStatus == EntryStatus.EXISTS) continue
+
+                            val contentHash = doc.hash()
+                            val cachedEmbedding = CacheStore.get(contentHash)
+                            if (cachedEmbedding == null) toEmbed.add(doc)
+
+                            if (entryStatus == EntryStatus.NOT_EXISTS || entryStatus == EntryStatus.STALE
+                                || (entryStatus == EntryStatus.NEEDS_EMBEDDING && cachedEmbedding != null)
+                            ) {
+                                val newDoc = buildDocument(doc, cachedEmbedding, contentHash = contentHash)
                                 if (entryStatus == EntryStatus.NOT_EXISTS) {
                                     writer.addDocument(newDoc)
                                     addedCount++
@@ -166,6 +173,31 @@ open class SearchIndex(path: Path) {
             SmartSearchClient.LOGGER.info("Removed ${ids.size} search documents")
         }
     }
+
+    /** Create an embedding cache of all embeddings loaded */
+    fun createEmbeddingCache(): EmbeddingCache = whileOpen {
+        withSearcher { searcher ->
+            val res = mutableMapOf<String, Embedding>()
+            for (leaf in searcher.indexReader.leaves()) {
+                val reader = leaf.reader()
+                val vectors = reader.getFloatVectorValues("embedding") ?: continue
+                val storedFields = reader.storedFields()
+                val iterator = vectors.iterator()
+                var docId = iterator.nextDoc()
+                while (docId != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (reader.liveDocs?.get(docId) != false) { // skip already deleted docs
+                        val hash = storedFields.document(docId, setOf("content_hash")).get("content_hash")
+                        if (hash != null) {
+                            // vectorValue reuses array, so copy
+                            res[hash] = Embedding(vectors.vectorValue(iterator.index()).copyOf())
+                        }
+                    }
+                    docId = iterator.nextDoc()
+                }
+            }
+            EmbeddingCache(res)
+        }
+    } ?: EmbeddingCache(emptyMap())
 
     /** Runs [searcher] against the index, or returns null once the index is closed */
     fun <T> search(searcher: (IndexReader, IndexSearcher, Analyzer) -> T): T? = whileOpen {
@@ -286,10 +318,14 @@ open class SearchIndex(path: Path) {
         return EntryStatus.EXISTS
     }
 
-    private fun buildDocument(entry: SearchDocument<*>, embedding: Embedding? = null): Document {
+    private fun buildDocument(
+        entry: SearchDocument<*>,
+        embedding: Embedding? = null,
+        contentHash: String = entry.hash()
+    ): Document {
         val doc = Document()
         doc.add(StringField("id", entry.id, Field.Store.YES))
-        doc.add(StringField("content_hash", entry.hash(), Field.Store.YES))
+        doc.add(StringField("content_hash", contentHash, Field.Store.YES))
         entry.metadata.title?.let {
             doc.add(TextField("title", it, Field.Store.NO))
             doc.add(StringField("title_key", titleKey(it), Field.Store.NO))

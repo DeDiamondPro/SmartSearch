@@ -9,6 +9,7 @@ import kotlinx.coroutines.runBlocking
 import org.polyfrost.oneconfig.api.event.v1.EventManager
 import org.polyfrost.oneconfig.api.event.v1.events.ShutdownEvent
 import org.polyfrost.oneconfig.internal.ui.search.SearchProviderRegistry
+import org.polyfrost.smartsearch.cache.RemoteCacheProvider
 import org.polyfrost.smartsearch.config.SmartSearchConfig
 import org.polyfrost.smartsearch.index.DataStore
 import org.polyfrost.smartsearch.index.Embedder
@@ -30,6 +31,7 @@ object SmartSearchClient {
 
     internal fun init() {
         SmartSearchConfig.preload()
+        RemoteCacheProvider.register()
         SearchProviderRegistry.registerSearchProvider(SmartSearchProvider)
         if (SmartSearchConfig.enableSemantic) {
             startModel()
@@ -41,6 +43,7 @@ object SmartSearchClient {
     }
 
     internal fun startModel() {
+        RemoteCacheProvider.sync()
         scope.launch {
             ModelController.init(ArcticEmbedXsFactory)
             Embedder.startEmbeddings()

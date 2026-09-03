@@ -4,6 +4,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.polyfrost.oneconfig.internal.ui.search.SearchDocument
 import org.polyfrost.smartsearch.SmartSearchClient
+import org.polyfrost.smartsearch.cache.CacheStore
 import org.polyfrost.smartsearch.config.SmartSearchConfig
 import org.polyfrost.smartsearch.model.ModelController
 import java.util.concurrent.atomic.AtomicBoolean
@@ -42,6 +43,24 @@ object Embedder {
         synchronized(queueLock) {
             ids.forEach(toEmbed::remove)
         }
+    }
+
+    /** Check if any pending embeddings exists in a cache update, and use cache instead of embedding */
+    fun recheckCache() {
+        val cached = synchronized(queueLock) {
+            val cached = toEmbed.mapNotNull { (_, doc) ->
+                val embedding = CacheStore.get(doc.hash()) ?: return@mapNotNull null
+                doc to embedding
+            }.toMap()
+
+            for (doc in cached.keys) {
+                toEmbed.remove(doc.id)
+            }
+            cached
+        }
+
+        DataStore.addEmbeddings(cached)
+        DataStore.flush()
     }
 
     private fun takeBatch(): List<SearchDocument<*>> = synchronized(queueLock) {

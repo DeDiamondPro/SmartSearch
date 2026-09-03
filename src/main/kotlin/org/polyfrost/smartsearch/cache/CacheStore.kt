@@ -31,6 +31,12 @@ object CacheStore {
         cacheProviders += provider
     }
 
+    fun invalidate() {
+        synchronized(loadLock) {
+            caches = SoftReference(null)
+        }
+    }
+
     private fun getCaches(): List<EmbeddingCache> {
         caches.get()?.let { return it }
         synchronized(loadLock) {

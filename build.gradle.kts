@@ -38,11 +38,11 @@ repositories {
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:26.2")
+    minecraft("com.mojang:minecraft:26.3")
     implementation("net.fabricmc:fabric-loader:0.19.3")
 
     val oneConfigVersion = "1.2.7"
-    runtimeOnly("org.polyfrost.oneconfig:26.2-fabric:$oneConfigVersion")
+    runtimeOnly("org.polyfrost.oneconfig:26.3-fabric:$oneConfigVersion")
     for (module in listOf("config", "config-impl", "events", "internal")) {
         implementation("org.polyfrost.oneconfig:$module:$oneConfigVersion")
     }
@@ -68,14 +68,14 @@ kotlin {
     jvmToolchain(21)
 }
 
-// Allow us to run 26.2
+// Allow us to run 26.2+
 configurations.runtimeClasspath {
     attributes {
         attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 25)
     }
 }
 configurations.testRuntimeClasspath {
-    exclude(group = "org.polyfrost.oneconfig", module = "26.2-fabric")
+    exclude(group = "org.polyfrost.oneconfig", module = "26.3-fabric")
 }
 
 tasks.test {
@@ -187,7 +187,7 @@ publishMods {
         projectId = "N5EQhK31"
         accessToken = modrinthToken.orEmpty()
 
-        minecraftVersions.addAll("1.21.1", "1.21.4", "1.21.5", "1.21.8", "1.21.10", "1.21.11", "26.1", "26.1.1", "26.1.2", "26.2")
+        minecraftVersions.addAll("1.21.1", "1.21.4", "1.21.5", "1.21.8", "1.21.10", "1.21.11", "26.1", "26.1.1", "26.1.2", "26.2", "26.3")
 
         requires("oneconfig")
     }

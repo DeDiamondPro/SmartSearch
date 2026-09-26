@@ -128,7 +128,7 @@ tasks.processResources {
 
     inputs.property("version", project.version)
     filesMatching("fabric.mod.json") {
-        expand("version" to project.version)
+        expand("version" to "${project.version}+fabric")
     }
 }
 
@@ -171,24 +171,48 @@ tasks.named("processIncludeJars") {
 val modrinthToken = listOf("oneconfig.publish.modrinth.token", "publish.modrinth.token", "modrinth.token")
     .firstNotNullOfOrNull { findProperty(it) }?.toString()?.takeIf { it.isNotBlank() }
 
-publishMods {
-    file = tasks.named<Jar>("jar").flatMap { it.archiveFile }
+// Modrinth requires distinct hashes per upload, so the Ornithe jar only differs in its version metadata
+val ornitheJar by tasks.registering(Zip::class) {
+    val jar = tasks.jar.flatMap { it.archiveFile }
+    from(jar.map { zipTree(it) })
+    filesMatching("fabric.mod.json") {
+        filter { it.replace("${project.version}+fabric", "${project.version}+ornithe") }
+    }
+    destinationDirectory = tasks.jar.flatMap { it.destinationDirectory }
+    archiveBaseName = tasks.jar.flatMap { it.archiveBaseName }
+    archiveVersion = tasks.jar.flatMap { it.archiveVersion }
+    archiveClassifier = "ornithe"
+    archiveExtension = "jar"
+}
+tasks.assemble { dependsOn(ornitheJar) }
 
-    displayName = project.version.toString()
-    version = "v${project.version}"
+publishMods {
     changelog = rootProject.file("CHANGELOG.md").takeIf { it.exists() }?.readText() ?: "No changelog provided."
     type = STABLE
 
-    modLoaders.add("fabric")
-
     dryRun = modrinthToken == null
 
-    modrinth {
+    val modrinthOptions = modrinthOptions {
         projectId = "N5EQhK31"
         accessToken = modrinthToken.orEmpty()
-
-        minecraftVersions.addAll("1.21.1", "1.21.4", "1.21.5", "1.21.8", "1.21.10", "1.21.11", "26.1", "26.1.1", "26.1.2", "26.2", "26.3")
-
         requires("oneconfig")
+    }
+
+    modrinth {
+        from(modrinthOptions)
+        file = tasks.jar.flatMap { it.archiveFile }
+        displayName = "${project.version} (Fabric)"
+        version = "v${project.version}+fabric"
+        modLoaders.add("fabric")
+        minecraftVersions.addAll("1.21.1", "1.21.4", "1.21.5", "1.21.8", "1.21.10", "1.21.11", "26.1", "26.1.1", "26.1.2", "26.2", "26.3")
+    }
+
+    modrinth("modrinthOrnithe") {
+        from(modrinthOptions)
+        file = ornitheJar.flatMap { it.archiveFile }
+        displayName = "${project.version} (Ornithe)"
+        version = "v${project.version}+ornithe"
+        modLoaders.add("ornithe")
+        minecraftVersions.add("1.8.9")
     }
 }

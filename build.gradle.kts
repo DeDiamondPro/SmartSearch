@@ -198,7 +198,7 @@ publishMods {
         requires("oneconfig")
     }
 
-    modrinth {
+    modrinth("modrinthFabric") {
         from(modrinthOptions)
         file = tasks.jar.flatMap { it.archiveFile }
         modLoaders.add("fabric")

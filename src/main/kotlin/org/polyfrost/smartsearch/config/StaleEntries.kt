@@ -1,5 +1,15 @@
 package org.polyfrost.smartsearch.config
 
+import com.google.gson.Gson
+import org.polyfrost.smartsearch.SmartSearchClient
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import kotlin.io.path.bufferedReader
+import kotlin.io.path.bufferedWriter
+import kotlin.io.path.createDirectories
+import kotlin.io.path.exists
+import kotlin.io.path.moveTo
+
 /**
  * Class keeping track of stale config entries, as 2 arrays since OneConfig doesn't serialize maps properly
  */
@@ -67,10 +77,38 @@ class StaleEntries {
         return expired
     }
 
+    @Synchronized
+    fun save() {
+        runCatching {
+            file.parent?.createDirectories()
+            val partial = file.resolveSibling("${file.fileName}.part")
+            partial.bufferedWriter().use { GSON.toJson(this, it) }
+            partial.moveTo(file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        }.onFailure {
+            SmartSearchClient.LOGGER.error("Failed to save stale entries", it)
+        }
+    }
+
     private fun trim() {
         if (ids.size == launchesLeft.size) return
         val size = minOf(ids.size, launchesLeft.size)
         ids = ids.copyOfRange(0, size)
         launchesLeft = launchesLeft.copyOfRange(0, size)
+    }
+
+    companion object {
+        private val GSON = Gson()
+        private val file: Path
+            get() = SmartSearchConfig.dbPath().resolve("stale-entries.json")
+
+        fun load(): StaleEntries {
+            if (!file.exists()) return StaleEntries()
+            return runCatching {
+                file.bufferedReader().use { GSON.fromJson(it, StaleEntries::class.java) }
+            }.getOrNull()
+                // Gson leaves missing, non-null, fields null
+                ?.takeIf { (it.ids as Array<String>?) != null && (it.launchesLeft as IntArray?) != null }
+                ?: StaleEntries().also { SmartSearchClient.LOGGER.warn("Failed to read stale entries, starting fresh") }
+        }
     }
 }

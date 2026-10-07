@@ -135,9 +135,9 @@ private fun IndexerSnapshot.indexLine(): String = buildString {
         append(embedded)
         append(" embedded")
     }
-    if (SmartSearchConfig.staleEntries.isNotEmpty()) {
+    if (DataStore.staleEntries.isNotEmpty()) {
         append(", ")
-        append(SmartSearchConfig.staleEntries.size)
+        append(DataStore.staleEntries.size)
         append(" stale")
     }
 }

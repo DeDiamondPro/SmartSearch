@@ -1,2 +1,3 @@
-## 1.1.0-1
-- No functionality changes. Reuploaded to declare Ornithe support.
+## 1.2.0
+- Fixed not being able to search for "hurtcam" to get "BetterHurtCame" (and cases like it)
+- Fixed multiple OneClient instances using the same database

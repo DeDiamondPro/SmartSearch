@@ -2,10 +2,9 @@ package org.polyfrost.smartsearch.index
 
 import org.polyfrost.oneconfig.internal.ui.search.SearchCorpus
 import org.polyfrost.smartsearch.config.SmartSearchConfig
-import kotlin.io.path.Path
 
 /** The game's search index. */
-object DataStore : SearchIndex(Path("smartsearch-db")) {
+object DataStore : SearchIndex(SmartSearchConfig.dbPath()) {
     /** Amount of launches an entry needs to be unseen before it's removed */
     private const val LAUNCHES_BEFORE_REMOVAL = 2
 

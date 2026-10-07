@@ -13,6 +13,9 @@ import org.polyfrost.smartsearch.search.SearchParams
 import org.polyfrost.smartsearch.ui.IndexerStatusVisualizer
 import org.polyfrost.smartsearch.util.DocumentExporter
 import java.io.File
+import java.nio.file.Path
+import java.security.MessageDigest
+import kotlin.io.path.Path
 
 object SmartSearchConfig : Config(
     "smartsearch.json",
@@ -32,6 +35,15 @@ object SmartSearchConfig : Config(
                 "this activates an ML embedding model to help with searches."
     )
     var enableSemantic: Boolean = true
+
+    fun dbPath(): Path {
+        // Make the folder in a hashed subdirectory, so for OneClient, if the mods folder is overwritten
+        // it will get a unique folder per instance
+        val folder = Path("smartsearch-db")
+        val modsFolder = (System.getProperty("fabric.modsFolder") ?: "mods")
+        val folderHash = MessageDigest.getInstance("MD5").digest(modsFolder.toByteArray())
+        return folder.resolve(folderHash.toHexString())
+    }
 
     @Button(
         title = "Clean database",

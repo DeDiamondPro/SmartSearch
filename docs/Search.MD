@@ -12,6 +12,8 @@ following filters are used:
 - When indexing (not in queries) we use `WordDelimiterGraphFilter` to split names like "OverflowParticles" into
   "overflow" and "particles", this improves search a lot if the user just searches "particles". This graph is then
   flattened.
+- The title and mod title are also indexed a second time into joined parts so for "BetterHurtCam" we store "betterhurt"
+  and "hurtcam", this makes it so we can search on "hurtcam"
 - The tokenstream is converted to lowercase
 - ASCIIFoldingFilter, folds letters to ASCII ("é" -> "e")
 - EnglishPossessiveFilter, takes thing like "Jeff's" -> "Jeff"

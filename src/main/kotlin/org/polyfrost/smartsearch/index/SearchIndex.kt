@@ -37,7 +37,7 @@ import kotlin.concurrent.write
 /**
  * Bumped whenever [SearchIndex.buildDocument] changes how a document is laid out
  */
-private const val SCHEMA_VERSION = 2
+private const val SCHEMA_VERSION = 3
 
 private enum class EntryStatus {
     EXISTS,
@@ -328,6 +328,7 @@ open class SearchIndex(path: Path) {
         doc.add(StringField("content_hash", contentHash, Field.Store.YES))
         entry.metadata.title?.let {
             doc.add(TextField("title", it, Field.Store.NO))
+            doc.add(TextField("title$JOINS_SUFFIX", it, Field.Store.NO))
             doc.add(StringField("title_key", titleKey(it), Field.Store.NO))
         }
         entry.metadata.description?.let {
@@ -335,6 +336,7 @@ open class SearchIndex(path: Path) {
         }
         entry.metadata.modTitle?.let {
             doc.add(TextField("mod", it, Field.Store.NO))
+            doc.add(TextField("mod$JOINS_SUFFIX", it, Field.Store.NO))
         }
         // Where the option is on the settings page
         val context = listOfNotNull(

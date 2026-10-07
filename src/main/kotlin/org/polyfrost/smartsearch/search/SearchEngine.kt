@@ -6,6 +6,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.*
 import org.polyfrost.oneconfig.internal.ui.search.SearchScope
+import org.polyfrost.smartsearch.index.JOINS_SUFFIX
 import org.polyfrost.smartsearch.index.SearchIndex
 import org.polyfrost.smartsearch.index.titleKey
 import org.polyfrost.smartsearch.index.toKey
@@ -158,6 +159,10 @@ object SearchEngine {
             params.lexicalTagBoost,
         )
         val fields = SEARCH_FIELDS.zip(boosts)
+        val wordFields = fields + listOf(
+            "title$JOINS_SUFFIX" to params.lexicalTitleBoost,
+            "mod$JOINS_SUFFIX" to params.lexicalModBoost,
+        )
         // The user is still typing unless they ended on a separator, so the last token is treated as a prefix.
         val lastIsPartial = analyzed.lastIsPartial
 
@@ -165,7 +170,7 @@ object SearchEngine {
         terms.forEachIndexed { index, term ->
             val partial = lastIsPartial && index == terms.lastIndex
             words.add(
-                bestField(params, fields) { field -> termClause(field, term, partial, params) },
+                bestField(params, wordFields) { field -> termClause(field, term, partial, params) },
                 BooleanClause.Occur.SHOULD,
             )
         }

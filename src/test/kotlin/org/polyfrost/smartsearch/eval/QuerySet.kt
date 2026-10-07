@@ -37,6 +37,7 @@ object QuerySet {
             addAll(descriptions())
             addAll(modNames())
             addAll(modNameParts())
+            addAll(modNameJoins())
             addAll(keybinds())
             addAll(CuratedQueries.queries)
             addAll(ShortQueries.queries)
@@ -151,6 +152,30 @@ object QuerySet {
             }
         return relevantByPart.entries.sortedBy { it.key }
             .map { (part, ids) -> EvalQuery("mod-part", part, ids, setOf(SearchScope.Mods)) }
+    }
+
+    /**
+     * Get some joined words out of one word mod names.
+     * Like "hurtcam" out of "BetterHurtCam"
+     */
+    private fun modNameJoins(): List<EvalQuery> {
+        val relevantByJoin = HashMap<String, MutableSet<String>>()
+        EvalCorpus.documents
+            .filter { SearchScope.Mods in it.scopes && it.metadata.title != null }
+            .forEach { mod ->
+                for (word in mod.metadata.title!!.split(Regex("[^A-Za-z0-9]+"))) {
+                    val parts = word.split(Regex("(?<=[a-z0-9])(?=[A-Z])")).map { it.lowercase() }
+                    for (start in parts.indices) {
+                        for (end in start + 2..parts.size) {
+                            if (start == 0 && end == parts.size) continue
+                            relevantByJoin.getOrPut(parts.subList(start, end).joinToString("")) { mutableSetOf() }
+                                .add(mod.id)
+                        }
+                    }
+                }
+            }
+        return relevantByJoin.entries.sortedBy { it.key }
+            .map { (join, ids) -> EvalQuery("mod-join", join, ids, setOf(SearchScope.Mods)) }
     }
 
     /**
